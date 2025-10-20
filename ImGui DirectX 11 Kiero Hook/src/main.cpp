@@ -1,19 +1,39 @@
 #include "includes.h"
+#include <stdio.h>
 extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 typedef BOOL(WINAPI* peekMessageA_t)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
 typedef BOOL(WINAPI* peekMessageW_t)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
+typedef void(__fastcall* FrameStageNotify_t)(void*, int);
 
 Present oPresent;
 HWND window = NULL;
 WNDPROC oWndProc;
 peekMessageA_t oPeekMessageA = nullptr;
 peekMessageW_t oPeekMessageW = nullptr;
+FrameStageNotify_t oFrameStageNotify = nullptr;
 ID3D11Device* pDevice = NULL;
 ID3D11DeviceContext* pContext = NULL;
 ID3D11RenderTargetView* mainRenderTargetView;
 
 bool menu_opened = true;
+
+// Global flags to test if FrameStageNotify is being called
+bool g_frameStageNotifyCalled = false;
+int g_frameStageCounter = 0;
+
+// CS2 Frame stage enum
+enum ClientFrameStage_t {
+	FRAME_UNDEFINED = -1,
+	FRAME_START,
+	FRAME_NET_UPDATE_START,
+	FRAME_NET_UPDATE_POSTDATAUPDATE_START,
+	FRAME_NET_UPDATE_POSTDATAUPDATE_END,
+	FRAME_NET_UPDATE_END,
+	FRAME_RENDER_START,
+	FRAME_RENDER_END,
+	FRAME_NET_FULL_FRAME_UPDATE_ON_REMOVE
+};
 
 // Menu state
 struct MenuState {
@@ -42,7 +62,7 @@ void InitImGui()
 	ImGui_ImplWin32_Init(window);
 	ImGui_ImplDX11_Init(pDevice, pContext);
 
-	// Custom styling to match the screenshot
+	// Custom styling
 	ImGuiStyle& style = ImGui::GetStyle();
 	ImGuiIO& io_style = ImGui::GetIO();
 
@@ -154,6 +174,80 @@ BOOL WINAPI hkPeekMessageW(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsg
 	return ret;
 }
 
+// CS2 FrameStageNotify hook - using __fastcall for x64
+void __fastcall hkFrameStageNotify(void* thisptr, int stage)
+{
+	// Set flag to show hook is working
+	g_frameStageNotifyCalled = true;
+	g_frameStageCounter++;
+
+	// Your code BEFORE the original call (pre-frame logic)
+	switch (stage)
+	{
+	case FRAME_NET_UPDATE_POSTDATAUPDATE_START:
+		// Skin changers, model changes before rendering
+		// Entity data has been updated, good time to modify
+		break;
+
+	case FRAME_RENDER_START:
+		// Visual modifications right before rendering
+		// Chams, glow, etc.
+		break;
+	}
+
+	// Call original
+	oFrameStageNotify(thisptr, stage);
+
+	// Your code AFTER the original call (post-frame logic)
+	switch (stage)
+	{
+	case FRAME_RENDER_END:
+		// After rendering completes
+		break;
+	}
+}
+
+// Simple test function to draw a box
+void RenderTestBox()
+{
+	ImDrawList* drawList = ImGui::GetBackgroundDrawList();
+
+	// Draw a simple test box in the center of the screen
+	ImVec2 screenCenter = ImVec2(960, 540); // Adjust for your resolution
+	ImVec2 boxSize = ImVec2(100, 150);
+
+	ImVec2 topLeft = ImVec2(
+		screenCenter.x - boxSize.x / 2,
+		screenCenter.y - boxSize.y / 2
+	);
+	ImVec2 bottomRight = ImVec2(
+		screenCenter.x + boxSize.x / 2,
+		screenCenter.y + boxSize.y / 2
+	);
+
+	// Draw box outline
+	drawList->AddRect(
+		topLeft,
+		bottomRight,
+		IM_COL32(255, 0, 0, 255), // Red color
+		0.0f,
+		0,
+		2.0f
+	);
+
+	// Draw text showing if FrameStageNotify is hooked
+	char text[128];
+	sprintf_s(text, "FrameStageNotify: %s\nCalls: %d",
+		g_frameStageNotifyCalled ? "HOOKED" : "NOT HOOKED",
+		g_frameStageCounter);
+
+	drawList->AddText(
+		ImVec2(topLeft.x, bottomRight.y + 10),
+		IM_COL32(255, 255, 0, 255),
+		text
+	);
+}
+
 void RenderMenu()
 {
 	ImGui::SetNextWindowPos(ImVec2(80, 60), ImGuiCond_FirstUseEver);
@@ -255,6 +349,9 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
+	// Render test box to show hook is working
+	RenderTestBox();
+
 	if (menu_opened) {
 		RenderMenu();
 	}
@@ -266,6 +363,33 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	return oPresent(pSwapChain, SyncInterval, Flags);
 }
 
+// Pattern scanning for CS2
+uintptr_t FindPattern(HMODULE module, const char* pattern, const char* mask)
+{
+	//MODULEINFO modInfo = {};
+	//GetModuleInformation(GetCurrentProcess(), module, &modInfo, sizeof(MODULEINFO));
+
+	//uintptr_t base = (uintptr_t)module;
+	//uintptr_t size = modInfo.SizeOfImage;
+	//size_t patternLength = strlen(mask);
+
+	//for (uintptr_t i = 0; i < size - patternLength; i++)
+	//{
+	//	bool found = true;
+	//	for (size_t j = 0; j < patternLength; j++)
+	//	{
+	//		if (mask[j] != '?' && pattern[j] != *(char*)(base + i + j))
+	//		{
+	//			found = false;
+	//			break;
+	//		}
+	//	}
+	//	if (found)
+	//		return base + i;
+	//}
+	return 0;
+}
+
 DWORD WINAPI MainThread(LPVOID lpReserved)
 {
 	bool init_hook = false;
@@ -273,12 +397,61 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
 	{
 		if (kiero::init(kiero::RenderType::D3D11) == kiero::Status::Success)
 		{
-			// Hook Present as before
+			// Hook Present
 			kiero::bind(8, (void**)&oPresent, hkPresent);
 
-			// Hook both PeekMessageA and PeekMessageW
+			// Hook both PeekMessage functions
 			kiero::bindImport("user32.dll", "PeekMessageA", (void**)&oPeekMessageA, (void*)hkPeekMessageA);
 			kiero::bindImport("user32.dll", "PeekMessageW", (void**)&oPeekMessageW, (void*)hkPeekMessageW);
+
+			// CS2 uses client.dll
+			HMODULE clientDll = GetModuleHandleA("client.dll");
+			if (clientDll)
+			{
+				// Method 1: Try CreateInterface (may not work in CS2)
+				typedef void* (*CreateInterfaceFn)(const char*, int*);
+				CreateInterfaceFn CreateInterface = (CreateInterfaceFn)GetProcAddress(clientDll, "CreateInterface");
+
+				void* frameStageNotifyAddr = nullptr;
+
+				if (CreateInterface)
+				{
+					// CS2 interface versions (try multiple)
+					const char* versions[] = { "Source2Client002", "Source2Client001" };
+					void* clientInterface = nullptr;
+
+					for (const char* version : versions)
+					{
+						clientInterface = CreateInterface(version, nullptr);
+						if (clientInterface)
+						{
+							// CS2 uses different vtable index - typically around 5-6
+							void** vtable = *(void***)clientInterface;
+							frameStageNotifyAddr = vtable[32]; // Try index 5 first
+							break;
+						}
+					}
+				}
+
+				// Method 2: Pattern scanning (more reliable for CS2)
+				if (!frameStageNotifyAddr)
+				{
+					MessageBoxA(NULL, "FrameStageNotify not hooked retard L successfully!", "Success", MB_OK);
+					// This is an example pattern - you'll need to find the actual CS2 pattern
+					// Use a tool like x64dbg or IDA to find the signature
+					const char* pattern = "\x40\x53\x48\x83\xEC\x20\x8B\xDA\x48\x8B\x0D";
+					const char* mask = "xxxxxxxxxxx";
+					frameStageNotifyAddr = (void*)FindPattern(clientDll, pattern, mask);
+				}
+
+				// Hook if found
+				if (frameStageNotifyAddr)
+				{
+					if (kiero::bindFunction(frameStageNotifyAddr, (void**)&oFrameStageNotify, (void*)hkFrameStageNotify) == kiero::Status::Success)
+					{
+					}
+				}
+			}
 
 			init_hook = true;
 		}
