@@ -1,0 +1,107 @@
+# .gitignore for Visual Studio C++ projects (suitable for __Visual Studio 2022__)
+# Place this file at the repository root.
+
+# Visual Studio / VS cache and local settings
+.vs/
+*.VC.db
+*.VC.opendb
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Build artifacts
+[Bb]in/
+[Oo]bj/
+build/
+out/
+Debug*/
+Release*/
+x64/
+x86/
+arm*/
+arm64*/
+
+# Intermediate / compiler files
+*.obj
+*.o
+*.tlog
+*.idb
+*.pdb
+*.ilk
+*.ipch
+*.iobj
+*.ipdb
+
+# Linker / library outputs (usually produced by builds)
+*.lib
+*.exp
+*.dll
+*.exe
+
+# Static analysis / cache / IDE
+*.sdf
+*.opensdf
+*.cachefile
+*.log
+*.vspscc
+*.vssscc
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Makefile
+
+# NuGet / package managers
+packages/
+*.nupkg
+project.lock.json
+packages.config
+
+# vcpkg
+vcpkg_installed/
+installed/
+
+# Visual Studio Code
+.vscode/
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Logs, temporary files, backups
+*.log
+*.tmp
+*.temp
+*.bak
+*~.nib
+
+# Secrets / certificates / environment
+*.pfx
+*.pem
+*.key
+.env
+.env.local
+secrets.json
+
+# Generated files often not intended for VCS
+*.ilk
+*.idb
+*.iobj
+*.sbr
+
+# Editor backups
+*~ 
+*.swp
+*.swo
+
+# Optional: ignore third-party build artifacts if you build them locally.
+# If your repo stores prebuilt binaries under ext/ or libs/, remove these lines.
+ext/**/bin/
+ext/**/obj/
+ext/**/build/
+
+# End of .gitignore
