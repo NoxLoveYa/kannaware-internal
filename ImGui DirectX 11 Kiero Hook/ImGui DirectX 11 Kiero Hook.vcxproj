@@ -103,6 +103,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -157,6 +158,8 @@
     <ClCompile Include="ext\kiero\minhook\src\hook.c" />
     <ClCompile Include="ext\kiero\minhook\src\trampoline.c" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\menu\menu.cpp" />
+    <ClCompile Include="src\menu\menu_styling.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="ext\kiero\minhook\dll_resources\MinHook.def" />
@@ -183,6 +186,7 @@
     <ClInclude Include="ext\kiero\minhook\src\hde\table32.h" />
     <ClInclude Include="ext\kiero\minhook\src\hde\table64.h" />
     <ClInclude Include="ext\kiero\minhook\src\trampoline.h" />
+    <ClInclude Include="src\menu\menu.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

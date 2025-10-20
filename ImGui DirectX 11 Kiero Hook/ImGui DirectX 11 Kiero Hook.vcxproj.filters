@@ -60,6 +60,12 @@
     <ClCompile Include="ext\imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="src\menu\menu_styling.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\menu\menu.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ext\kiero\minhook\dll_resources\MinHook.rc">
@@ -119,6 +125,9 @@
       <Filter>imgui</Filter>
     </ClInclude>
     <ClInclude Include="src\includes.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\menu\menu.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
