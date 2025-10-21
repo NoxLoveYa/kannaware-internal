@@ -177,8 +177,6 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 	g_frameStageNotifyCalled = true;
 	g_frameStageCounter++;
 
-	// Call original FIRST before doing any custom logic
-	if (orig) orig(thisptr, stage);
 
 	// Do custom logic AFTER the original function completes
 	switch (stage)
@@ -198,6 +196,7 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 	case FRAME_RENDER_END:
 		break;
 	}
+	if (orig) orig(thisptr, stage);
 }
 
 void RenderESPDebugInfo()
@@ -330,13 +329,13 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
 						if (clientInterface)
 						{
 							void** vtable = *(void***)clientInterface;
-							void* frameStageNotifyAddr = vtable[32];
+							void* frameStageNotifyAddr = vtable[36];
 
 							if (frameStageNotifyAddr)
 							{
 								// Use kiero::bindFunction to hook the actual function
 								FrameStageNotify_t tmpOrig = nullptr;
-								if (kiero::bindFunction(frameStageNotifyAddr, (void**)&tmpOrig, (void*)hkFrameStageNotify) == kiero::Status::Success)
+								if (kiero::bindFunction(frameStageNotifyAddr, (void**)&tmpOrig, (FrameStageNotify_t*)hkFrameStageNotify) == kiero::Status::Success)
 								{
 									oFrameStageNotify.store(tmpOrig, std::memory_order_release);
 								}
