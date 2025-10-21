@@ -9,6 +9,13 @@
 
 #include "menu/menu.h"
 
+#include "sdk/offsets.h"
+#include "sdk/entity.h"
+#include "sdk/math_utils.h"
+#include "sdk/entity_manager.h"
+#include "sdk/esp_overlay.h"
+#include "sdk/vmt_hook.h"
+
 typedef HRESULT(__stdcall* Present) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 typedef LRESULT(CALLBACK* WNDPROC)(HWND, UINT, WPARAM, LPARAM);
 typedef BOOL(WINAPI* peekMessageA)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);

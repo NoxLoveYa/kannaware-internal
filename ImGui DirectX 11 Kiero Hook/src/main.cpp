@@ -25,6 +25,8 @@ HMODULE g_hModule = NULL;
 volatile bool g_unloading = false;
 volatile LONG g_inPresent = 0;
 
+uintptr_t g_clientBase = 0;
+
 enum ClientFrameStage_t {
 	FRAME_UNDEFINED = -1,
 	FRAME_START,
@@ -49,7 +51,6 @@ void InitImGui()
 	Menu::applyStyling(style);
 }
 
-// Unload helper thread
 DWORD WINAPI UnloadThread(LPVOID lpReserved)
 {
 	if (g_unloading)
@@ -58,7 +59,6 @@ DWORD WINAPI UnloadThread(LPVOID lpReserved)
 	g_unloading = true;
 	kiero::shutdown();
 
-	// clear original pointer for callers
 	oFrameStageNotify.store(nullptr, std::memory_order_release);
 
 	const int maxWaitIterations = 100;
@@ -118,6 +118,10 @@ BOOL WINAPI hkPeekMessageA(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsg
 			if (!g_unloading)
 				CreateThread(nullptr, 0, UnloadThread, nullptr, 0, nullptr);
 		}
+		else if (lpMsg->message == WM_KEYDOWN && lpMsg->wParam == VK_HOME)
+		{
+			g_ESP.SetEnabled(!g_ESP.IsEnabled());
+		}
 	}
 
 	return ret;
@@ -142,12 +146,16 @@ BOOL WINAPI hkPeekMessageW(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsg
 			if (!g_unloading)
 				CreateThread(nullptr, 0, UnloadThread, nullptr, 0, nullptr);
 		}
+		else if (lpMsg->message == WM_KEYDOWN && lpMsg->wParam == VK_HOME)
+		{
+			g_ESP.SetEnabled(!g_ESP.IsEnabled());
+		}
 	}
 
 	return ret;
 }
 
-// FrameStageNotify hook (fastcall)
+// FrameStageNotify hook - Update entities here
 void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 {
 	FrameStageNotify_t orig = oFrameStageNotify.load(std::memory_order_acquire);
@@ -158,47 +166,69 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 		return;
 	}
 
+	// CRITICAL: Skip incrementing counter and just pass through during these stages
+	// These stages happen during loading and the job system might be unstable
+	if (stage == FRAME_UNDEFINED || stage == FRAME_START)
+	{
+		if (orig) orig(thisptr, stage);
+		return;
+	}
+
 	g_frameStageNotifyCalled = true;
 	g_frameStageCounter++;
 
+	// Call original FIRST before doing any custom logic
+	if (orig) orig(thisptr, stage);
+
+	// Do custom logic AFTER the original function completes
 	switch (stage)
 	{
 	case FRAME_NET_UPDATE_POSTDATAUPDATE_START:
+		// Update entities after network data is received
+		if (g_clientBase) {
+			g_EntityManager.UpdateEntities();
+		}
 		break;
 	case FRAME_RENDER_START:
+		// Update view matrix before rendering
+		if (g_clientBase) {
+			g_ESP.UpdateViewMatrix(g_clientBase);
+		}
 		break;
-	}
-
-	if (orig) orig(thisptr, stage);
-
-	switch (stage)
-	{
 	case FRAME_RENDER_END:
 		break;
 	}
 }
 
-void RenderTestBox()
+void RenderESPDebugInfo()
 {
 	if (g_unloading)
 		return;
 
 	ImDrawList* drawList = ImGui::GetBackgroundDrawList();
 
-	ImVec2 screenCenter = ImVec2(960, 540);
-	ImVec2 boxSize = ImVec2(100, 150);
-
-	ImVec2 topLeft = ImVec2(screenCenter.x - boxSize.x / 2, screenCenter.y - boxSize.y / 2);
-	ImVec2 bottomRight = ImVec2(screenCenter.x + boxSize.x / 2, screenCenter.y + boxSize.y / 2);
-
-	drawList->AddRect(topLeft, bottomRight, IM_COL32(255, 0, 0, 255), 0.0f, 0, 2.0f);
-
-	char text[128];
-	sprintf_s(text, "FrameStageNotify: %s\nCalls: %d",
+	char debugText[256];
+	sprintf_s(debugText,
+		"ESP: %s (HOME to toggle)\n"
+		"FrameStageNotify: %s\n"
+		"Calls: %d\n"
+		"Client Base: 0x%llX",
+		g_ESP.IsEnabled() ? "ON" : "OFF",
 		g_frameStageNotifyCalled ? "HOOKED" : "NOT HOOKED",
-		g_frameStageCounter);
+		g_frameStageCounter,
+		g_clientBase);
 
-	drawList->AddText(ImVec2(topLeft.x, bottomRight.y + 10), IM_COL32(255, 255, 0, 255), text);
+	ImVec2 textPos(10, 10);
+	ImVec2 textSize = ImGui::CalcTextSize(debugText);
+
+	// Background
+	drawList->AddRectFilled(
+		ImVec2(textPos.x - 5, textPos.y - 2),
+		ImVec2(textPos.x + textSize.x + 5, textPos.y + textSize.y + 2),
+		IM_COL32(0, 0, 0, 150)
+	);
+
+	drawList->AddText(textPos, IM_COL32(0, 255, 0, 255), debugText);
 }
 
 bool init = false;
@@ -218,6 +248,10 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 			DXGI_SWAP_CHAIN_DESC sd;
 			pSwapChain->GetDesc(&sd);
 			window = sd.OutputWindow;
+
+			// Set screen size for ESP
+			g_ESP.SetScreenSize(sd.BufferDesc.Width, sd.BufferDesc.Height);
+
 			ID3D11Texture2D* pBackBuffer;
 			pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
 			pDevice->CreateRenderTargetView(pBackBuffer, NULL, &mainRenderTargetView);
@@ -245,7 +279,11 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	RenderTestBox();
+	// Render ESP overlay
+	g_ESP.Render();
+
+	// Render debug info
+	RenderESPDebugInfo();
 
 	if (Menu::menu_opened) {
 		Menu::RenderMenu(g_unloading);
@@ -276,14 +314,14 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
 			HMODULE clientDll = GetModuleHandleA("client.dll");
 			if (clientDll)
 			{
+				g_clientBase = reinterpret_cast<uintptr_t>(clientDll);
+
 				typedef void* (*CreateInterfaceFn)(const char*, int*);
 				CreateInterfaceFn CreateInterface = (CreateInterfaceFn)GetProcAddress(clientDll, "CreateInterface");
 
-				void* frameStageNotifyAddr = nullptr;
-
 				if (CreateInterface)
 				{
-					const char* versions[] = { "Source2Client002", "Source2Client001" };
+					const char* versions[] = { "Source2Client002" };
 					void* clientInterface = nullptr;
 
 					for (const char* version : versions)
@@ -292,18 +330,20 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
 						if (clientInterface)
 						{
 							void** vtable = *(void***)clientInterface;
-							frameStageNotifyAddr = vtable[32];
+							void* frameStageNotifyAddr = vtable[32];
+
+							if (frameStageNotifyAddr)
+							{
+								// Use kiero::bindFunction to hook the actual function
+								FrameStageNotify_t tmpOrig = nullptr;
+								if (kiero::bindFunction(frameStageNotifyAddr, (void**)&tmpOrig, (void*)hkFrameStageNotify) == kiero::Status::Success)
+								{
+									oFrameStageNotify.store(tmpOrig, std::memory_order_release);
+								}
+							}
+
 							break;
 						}
-					}
-				}
-
-				if (frameStageNotifyAddr)
-				{
-					FrameStageNotify_t tmpOrig = nullptr;
-					if (kiero::bindFunction(frameStageNotifyAddr, (void**)&tmpOrig, (void*)hkFrameStageNotify) == kiero::Status::Success)
-					{
-						oFrameStageNotify.store(tmpOrig, std::memory_order_release);
 					}
 				}
 			}
@@ -320,7 +360,24 @@ BOOL WINAPI DllMain(HMODULE hMod, DWORD dwReason, LPVOID lpReserved)
 	{
 	case DLL_PROCESS_ATTACH:
 		DisableThreadLibraryCalls(hMod);
+
+		// Reset everything in case of reinjection
 		g_hModule = hMod;
+		g_unloading = false;
+		g_inPresent = 0;
+		init = false;
+		window = NULL;
+		oWndProc = nullptr;
+		oPeekMessageA = nullptr;
+		oPeekMessageW = nullptr;
+		oFrameStageNotify.store(nullptr, std::memory_order_release);
+		pDevice = NULL;
+		pContext = NULL;
+		mainRenderTargetView = nullptr;
+		g_frameStageNotifyCalled = false;
+		g_frameStageCounter = 0;
+		g_clientBase = 0;
+
 		CreateThread(nullptr, 0, MainThread, hMod, 0, nullptr);
 		break;
 	case DLL_PROCESS_DETACH:
