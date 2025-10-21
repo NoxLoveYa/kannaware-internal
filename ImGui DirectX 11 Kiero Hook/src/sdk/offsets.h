@@ -10,6 +10,7 @@ namespace Offsets {
         constexpr std::ptrdiff_t dwLocalPlayerPawn = 0x1BDBB10;
         constexpr std::ptrdiff_t dwViewMatrix = 0x1E1E920;
         constexpr std::ptrdiff_t dwGameEntitySystem = 0x1FA4FE0;
+		constexpr std::ptrdiff_t dwGameEntitySystem_highestEntityIndex = 0x20F0;
     }
 
     // CEntityIdentity

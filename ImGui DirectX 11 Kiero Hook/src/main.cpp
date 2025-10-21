@@ -184,7 +184,7 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 	case FRAME_NET_UPDATE_POSTDATAUPDATE_START:
 		// Update entities after network data is received
 		if (g_clientBase) {
-			g_EntityManager.UpdateEntities();
+			g_EntityManager.UpdatePlayers();
 		}
 		break;
 	case FRAME_RENDER_START:
@@ -314,6 +314,7 @@ DWORD WINAPI MainThread(LPVOID lpReserved)
 			if (clientDll)
 			{
 				g_clientBase = reinterpret_cast<uintptr_t>(clientDll);
+				g_EntityManager.Initialize(g_clientBase);
 
 				typedef void* (*CreateInterfaceFn)(const char*, int*);
 				CreateInterfaceFn CreateInterface = (CreateInterfaceFn)GetProcAddress(clientDll, "CreateInterface");
