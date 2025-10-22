@@ -6,6 +6,7 @@ extern LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam
 
 typedef BOOL(WINAPI* peekMessageA_t)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
 typedef BOOL(WINAPI* peekMessageW_t)(LPMSG lpMsg, HWND hWnd, UINT wMsgFilterMin, UINT wMsgFilterMax, UINT wRemoveMsg);
+
 typedef void(__fastcall* FrameStageNotify_t)(void*, int);
 
 Present oPresent;
@@ -189,8 +190,6 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 		}
 		break;
 	case FRAME_RENDER_START:
-		if (g_clientBase) {
-		}
 		break;
 	case FRAME_RENDER_END:
 		break;
@@ -284,6 +283,8 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	// Render ESP overlay
 	g_ESP.UpdateViewMatrix(g_clientBase);
 	g_ESP.Render();
+
+	ImGuiIO& io = ImGui::GetIO();
 
 	if (Menu::menu_opened) {
 		Menu::RenderMenu(g_unloading);

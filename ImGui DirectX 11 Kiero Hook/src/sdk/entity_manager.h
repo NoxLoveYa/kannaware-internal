@@ -112,8 +112,10 @@ public:
         UpdateLocalPlayer();
 
         // Update all player controllers (indices 1-64)
-        for (int i = 1; i <= 1024; i++) {
-            auto& player = players[i - 1];
+        for (int i = 1; i <= 64; i++) {
+            if (i > players.max_size()) continue;
+
+            PlayerInfo& player = players[i - 1];
             player.isValid = false;
 
             uintptr_t controller = GetEntityFromList(i);

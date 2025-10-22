@@ -17,26 +17,105 @@ private:
     ImU32 healthBarYellow = IM_COL32(255, 255, 0, 255);
     ImU32 healthBarRed = IM_COL32(255, 0, 0, 255);
     ImU32 textColor = IM_COL32(255, 255, 255, 255);
-    ImU32 boxBg = IM_COL32(0, 0, 0, 100);
+    ImU32 boxBg = IM_COL32(0, 0, 0, 255);
 
-    void DrawBox(ImDrawList* drawList, const Vector2& head, const Vector2& feet, ImU32 color) {
+    void DrawBox(ImDrawList* drawList, const Vector2& head, const Vector2& feet, bool isEnemy) {
+        if (!MenuOptions::ESP::boxEnabled || !isEnemy && MenuOptions::ESP::boxSkipTeammates) return;
+
         float height = feet.y - head.y;
         float width = height * 0.65f;
-
         float left = head.x - width * 0.5f;
         float right = head.x + width * 0.5f;
         float top = head.y;
         float bottom = feet.y;
 
-        // Draw box outline
-        drawList->AddRect(
-            ImVec2(left, top),
-            ImVec2(right, bottom),
-            color,
-            0.0f,
-            0,
-            2.0f
+        // Get colors
+        float* boxColorArray = isEnemy ? MenuOptions::ESP::ennemyBoxColor : MenuOptions::ESP::teamBoxColor;
+        ImU32 boxColor = IM_COL32(
+            (int)(boxColorArray[0] * 255),
+            (int)(boxColorArray[1] * 255),
+            (int)(boxColorArray[2] * 255),
+            (int)(MenuOptions::ESP::boxOpacity * 255)
         );
+
+        ImU32 bgColor = IM_COL32(
+            (int)(MenuOptions::ESP::boxBgColor[0] * 255),
+            (int)(MenuOptions::ESP::boxBgColor[1] * 255),
+            (int)(MenuOptions::ESP::boxBgColor[2] * 255),
+            (int)(MenuOptions::ESP::boxBgOpacity * 255 * MenuOptions::ESP::boxOpacity)
+        );
+
+        ImU32 outlineColor = IM_COL32(0, 0, 0, MenuOptions::ESP::boxOpacity * 255);
+
+        // Calculate line lengths based on multipliers
+        float horizontalLength = width * MenuOptions::ESP::boxWidthMultiplier * 0.5f;
+        float verticalLength = height * MenuOptions::ESP::boxLengthMultiplier * 0.5f;
+
+        // 1. Draw filled background (full box)
+        if (MenuOptions::ESP::boxBgEnabled) {
+            drawList->AddRectFilled(
+                ImVec2(left, top),
+                ImVec2(right, bottom),
+                bgColor
+            );
+        }
+
+        float thickness = MenuOptions::ESP::boxThickness;
+        float outlineThickness = 1.0f;
+        float halfThickness = thickness * 0.5f;
+
+        // Draw all outlines first (outer and inner)
+        float halfOutline = outlineThickness * 0.5f;
+
+        // Top-left corner outlines
+        // Outer
+        drawList->AddLine(ImVec2(left - halfThickness - 1, top - halfThickness - 1), ImVec2(left + horizontalLength + halfThickness + 1 + halfOutline, top - halfThickness - 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(left - halfThickness - 1, top - halfThickness - 1), ImVec2(left - halfThickness - 1, top + verticalLength + halfThickness + 1 + halfOutline), outlineColor, outlineThickness);
+        // Inner
+        drawList->AddLine(ImVec2(left - halfThickness + 1, top + halfThickness + 1), ImVec2(left + horizontalLength + halfThickness + 1 + halfOutline, top + halfThickness + 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(left + halfThickness + 1, top - halfThickness + 1), ImVec2(left + halfThickness + 1, top + verticalLength + halfThickness + 1 + halfOutline), outlineColor, outlineThickness);
+
+        // Top-right corner outlines
+        // Outer
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness - 1 - halfOutline, top - halfThickness - 1), ImVec2(right + halfThickness + 1, top - halfThickness - 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(right + halfThickness + 1, top - halfThickness - 1), ImVec2(right + halfThickness + 1, top + verticalLength + halfThickness + 1 + halfOutline), outlineColor, outlineThickness);
+        // Inner
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness - 1 - halfOutline, top + halfThickness + 1), ImVec2(right + halfThickness - 1, top + halfThickness + 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(right - halfThickness - 1, top + halfThickness + 1), ImVec2(right - halfThickness - 1, top + verticalLength + halfThickness + 1 + halfOutline), outlineColor, outlineThickness);
+
+        // Bottom-left corner outlines
+        // Outer
+        drawList->AddLine(ImVec2(left - halfThickness - 1, bottom + halfThickness + 1), ImVec2(left + horizontalLength + halfThickness + 1 + halfOutline, bottom + halfThickness + 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(left - halfThickness - 1, bottom - verticalLength - halfThickness - 1 - halfOutline), ImVec2(left - halfThickness - 1, bottom + halfThickness + 1), outlineColor, outlineThickness);
+        // Inner
+        drawList->AddLine(ImVec2(left - halfThickness + 1, bottom - halfThickness - 1), ImVec2(left + horizontalLength + halfThickness + 1 + halfOutline, bottom - halfThickness - 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(left + halfThickness + 1, bottom - verticalLength - halfThickness - 1 - halfOutline), ImVec2(left + halfThickness + 1, bottom + halfThickness - 1), outlineColor, outlineThickness);
+
+        // Bottom-right corner outlines
+        // Outer
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness - 1 - halfOutline, bottom + halfThickness + 1), ImVec2(right + halfThickness + 1, bottom + halfThickness + 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(right + halfThickness + 1, bottom - verticalLength - halfThickness - 1 - halfOutline), ImVec2(right + halfThickness + 1, bottom + halfThickness + 1), outlineColor, outlineThickness);
+        // Inner
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness - 1 - halfOutline, bottom - halfThickness - 1), ImVec2(right + halfThickness - 1, bottom - halfThickness - 1), outlineColor, outlineThickness);
+        drawList->AddLine(ImVec2(right - halfThickness - 1, bottom - verticalLength - halfThickness - 1 - halfOutline), ImVec2(right - halfThickness - 1, bottom - halfThickness - 1), outlineColor, outlineThickness);
+
+        // Draw all colored lines last (on top) - EXTENDED TO OVERLAP AT CORNERS
+
+        // Top-left corner colored lines (extend horizontal and vertical to overlap)
+        drawList->AddLine(ImVec2(left - halfThickness, top), ImVec2(left + horizontalLength + halfThickness, top), boxColor, thickness);
+        drawList->AddLine(ImVec2(left, top - halfThickness), ImVec2(left, top + verticalLength + halfThickness), boxColor, thickness);
+
+        // Top-right corner colored lines
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness, top), ImVec2(right + halfThickness, top), boxColor, thickness);
+        drawList->AddLine(ImVec2(right, top - halfThickness), ImVec2(right, top + verticalLength + halfThickness), boxColor, thickness);
+
+        // Bottom-left corner colored lines
+        drawList->AddLine(ImVec2(left - halfThickness, bottom), ImVec2(left + horizontalLength + halfThickness, bottom), boxColor, thickness);
+        drawList->AddLine(ImVec2(left, bottom - verticalLength - halfThickness), ImVec2(left, bottom + halfThickness), boxColor, thickness);
+
+        // Bottom-right corner colored lines
+        drawList->AddLine(ImVec2(right - horizontalLength - halfThickness, bottom), ImVec2(right + halfThickness, bottom), boxColor, thickness);
+        drawList->AddLine(ImVec2(right, bottom - verticalLength - halfThickness), ImVec2(right, bottom + halfThickness), boxColor, thickness);
     }
 
     void DrawHealthBar(ImDrawList* drawList, const Vector2& head, const Vector2& feet, int health, int maxHealth) {
@@ -162,6 +241,7 @@ public:
             headPos.z += 75.0f; // Approximate head height
 
             Vector3 feetPos = player.position;
+			feetPos.z -= 10.0f; // Feet position
 
             // Convert to screen space
             Vector2 headScreen, feetScreen;
@@ -170,11 +250,8 @@ public:
             if (!MathUtils::WorldToScreen(feetPos, feetScreen, viewMatrix, screenWidth, screenHeight))
                 return;
 
-            // Determine color based on team
-            ImU32 boxColor = (player.teamNum == localTeam) ? teamColor : enemyColor;
-
-            // Draw box
-            DrawBox(drawList, headScreen, feetScreen, boxColor);
+            if (MenuOptions::ESP::boxEnabled)
+                DrawBox(drawList, headScreen, feetScreen, (player.teamNum != localTeam));
 
             // Draw health bar
             DrawHealthBar(drawList, headScreen, feetScreen, player.health, player.maxHealth);
