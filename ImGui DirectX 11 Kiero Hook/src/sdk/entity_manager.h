@@ -7,6 +7,8 @@
 #include <vector>
 #include <Windows.h>
 
+constexpr size_t MAX_NAME_LEN = 128;
+
 struct PlayerInfo {
     uintptr_t controllerAddress;
     uintptr_t pawnAddress;
@@ -135,6 +137,10 @@ public:
             // Check if alive
             if (!isAlive) continue;
 
+			uintptr_t sanitizedNamePtr = *reinterpret_cast<uintptr_t*>(controller + 0x850);
+			if (!sanitizedNamePtr) continue;
+
+			char* sanitizedName = reinterpret_cast<char*>(sanitizedNamePtr);
 			int health = *reinterpret_cast<int*>(pawn + 0x34C);
 			int maxHealth = *reinterpret_cast<int*>(pawn + 0x348);
 			int teamNum = *reinterpret_cast<uint8_t*>(pawn + 0x3EB);
@@ -142,6 +148,15 @@ public:
 			uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(pawn + Offsets::Entity::m_pGameSceneNode);
 			if (!sceneNodePtr) continue;
 			Vector3 position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecAbsOrigin);
+
+            if (sanitizedName) {
+                // Copy string safely (ensure null termination)
+                strncpy_s(player.name, sizeof(player.name), sanitizedName, _TRUNCATE);
+                player.name[MAX_NAME_LEN - 1] = '\0';
+            }
+            else {
+                player.name[0] = '\0';
+            }
 
             // Cache player data
             player.controllerAddress = controller;
@@ -151,11 +166,6 @@ public:
             player.teamNum = teamNum;
             player.position = position;
             player.isAlive = isAlive;
-
-            // Get sanitized 
-            strncpy_s(player.name, "test", sizeof(player.name) - 1);
-			player.name[127] = '\0';
-
             player.isValid = true;
         }
     }

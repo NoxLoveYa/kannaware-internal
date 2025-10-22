@@ -10,11 +10,7 @@ private:
     int screenHeight;
     bool enabled = true;
 
-    // Colors
-    ImU32 enemyColor = IM_COL32(255, 0, 0, 255);
-    ImU32 teamColor = IM_COL32(0, 255, 0, 255);
     ImU32 textColor = IM_COL32(255, 255, 255, 255);
-    ImU32 boxBg = IM_COL32(0, 0, 0, 255);
 
     void DrawBox(ImDrawList* drawList, const Vector2& head, const Vector2& feet, bool isEnemy) {
         if (!MenuOptions::ESP::boxEnabled || !isEnemy && MenuOptions::ESP::boxSkipTeammates) return;
@@ -173,40 +169,66 @@ private:
 		);
     }
 
-    void DrawPlayerInfo(ImDrawList* drawList, const Vector2& head, const PlayerInfo& player) {
+    void DrawPlayerInfo(ImDrawList* drawList, const Vector2& head, const Vector2& feetScreen, const PlayerInfo& player) {
         float height = head.y;
         float x = head.x;
 
-        // Draw name above head
-        char nameText[128];
-        sprintf_s(nameText, "%s", player.name);
-
-        ImVec2 textSize = ImGui::CalcTextSize(nameText);
-        ImVec2 textPos(x - textSize.x * 0.5f, height - textSize.y - 5);
-
-        // Text background
-        drawList->AddRectFilled(
-            ImVec2(textPos.x - 2, textPos.y - 1),
-            ImVec2(textPos.x + textSize.x + 2, textPos.y + textSize.y + 1),
-            boxBg
+        ImU32 bgColor = IM_COL32(
+            (int)(MenuOptions::ESP::boxBgColor[0] * 255),
+            (int)(MenuOptions::ESP::boxBgColor[1] * 255),
+            (int)(MenuOptions::ESP::boxBgColor[2] * 255),
+            (int)(MenuOptions::ESP::boxBgOpacity * 255 * MenuOptions::ESP::textBgOpacity)
         );
 
-        drawList->AddText(textPos, textColor, nameText);
+        if (MenuOptions::ESP::nameEnabled) {
+            // Draw name above head
+            char nameText[128];
+            sprintf_s(nameText, "%s", player.name);
 
-        // Draw health text
-        char healthText[32];
-        sprintf_s(healthText, "%d HP", player.health);
+            ImVec2 textSize = ImGui::CalcTextSize(nameText);
+            ImVec2 textPos(x - textSize.x * 0.5f, height - textSize.y - 5);
 
-        ImVec2 healthSize = ImGui::CalcTextSize(healthText);
-        ImVec2 healthPos(x - healthSize.x * 0.5f, height - textSize.y - healthSize.y - 8);
+            // Text background
+            drawList->AddRectFilled(
+                ImVec2(textPos.x - 2, textPos.y - 1),
+                ImVec2(textPos.x + textSize.x + 2, textPos.y + textSize.y + 1),
+                bgColor
+            );
 
-        drawList->AddRectFilled(
-            ImVec2(healthPos.x - 2, healthPos.y - 1),
-            ImVec2(healthPos.x + healthSize.x + 2, healthPos.y + healthSize.y + 1),
-            boxBg
-        );
+            drawList->AddText(textPos, textColor, nameText);
+        }
 
-        drawList->AddText(healthPos, textColor, healthText);
+        //      if (MenuOptions::ESP::distanceEnabled) {
+        //          // Draw distance below feet
+        //          float distance = MathUtils::GetDistance(g_EntityManager.GetLocalPlayerPawn(), player.pawn);
+        //          char distanceText[32];
+        //          sprintf_s(distanceText, "%.1f m", distance);
+        //          ImVec2 distanceSize = ImGui::CalcTextSize(distanceText);
+        //          ImVec2 distancePos(x - distanceSize.x * 0.5f, feetScreen.y + 2.5f);
+        //          drawList->AddRectFilled(
+        //              ImVec2(distancePos.x - 2, distancePos.y - 1),
+        //              ImVec2(distancePos.x + distanceSize.x + 2, distancePos.y + distanceSize.y + 1),
+        //              bgColor
+        //          );
+        //          drawList->AddText(distancePos, textColor, distanceText);
+              //}
+
+        if (MenuOptions::ESP::textHealthEnabled) {
+            // Draw health text
+            char healthText[32];
+            sprintf_s(healthText, "%d HP", player.health);
+
+            ImVec2 healthSize = ImGui::CalcTextSize(healthText);
+            ImVec2 healthPos(x - healthSize.x * 0.5f, feetScreen.y + healthSize.y * 0.5f - 2.5f);
+
+            drawList->AddRectFilled(
+                ImVec2(healthPos.x - 2, healthPos.y - 1),
+                ImVec2(healthPos.x + healthSize.x + 2, healthPos.y + healthSize.y + 1),
+                bgColor
+            );
+
+            drawList->AddText(healthPos, textColor, healthText);
+        }
     }
 
 public:
@@ -271,11 +293,11 @@ public:
                 DrawBox(drawList, headScreen, feetScreen, isEnemy);
 
             // Draw health bar
-			if (MenuOptions::ESP::healthBarEnabled)
+			if (MenuOptions::ESP::healthBarEnabled || MenuOptions::ESP::healthBarSkipTeammates && isEnemy)
                 DrawHealthBar(drawList, headScreen, feetScreen, player.health, player.maxHealth, isEnemy);
 
             // Draw player info
-            DrawPlayerInfo(drawList, headScreen, player);
+            DrawPlayerInfo(drawList, headScreen, feetScreen, player);
             });
     }
 };

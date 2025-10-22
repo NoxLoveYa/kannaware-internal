@@ -148,9 +148,6 @@
     <ClInclude Include="src\sdk\vmt_hook.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\MinHook.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="src\menu\menu_options.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -159,8 +156,5 @@
     <None Include="ext\kiero\minhook\dll_resources\MinHook.def">
       <Filter>kiero</Filter>
     </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="src\MinHook.x64.lib" />
   </ItemGroup>
 </Project>

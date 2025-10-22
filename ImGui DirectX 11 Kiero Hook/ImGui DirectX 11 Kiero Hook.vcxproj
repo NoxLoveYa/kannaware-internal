@@ -188,16 +188,12 @@
     <ClInclude Include="ext\kiero\minhook\src\trampoline.h" />
     <ClInclude Include="src\menu\menu.h" />
     <ClInclude Include="src\menu\menu_options.h" />
-    <ClInclude Include="src\MinHook.h" />
     <ClInclude Include="src\sdk\entity.h" />
     <ClInclude Include="src\sdk\entity_manager.h" />
     <ClInclude Include="src\sdk\esp_overlay.h" />
     <ClInclude Include="src\sdk\math_utils.h" />
     <ClInclude Include="src\sdk\offsets.h" />
     <ClInclude Include="src\sdk\vmt_hook.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="src\MinHook.x64.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

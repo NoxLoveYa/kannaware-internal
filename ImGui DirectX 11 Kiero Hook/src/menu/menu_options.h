@@ -26,5 +26,13 @@ namespace MenuOptions {
 		inline bool healthBarSkipTeammates = true;
 		inline bool healthBarGradientEnabled = true;
 		inline bool healthBgEnabled = true;
+
+		// Text esp options
+		inline bool nameEnabled = true;
+
+		inline float textBgOpacity = 0.15f;
+
+		inline bool textNameEnabled = true;
+		inline bool textHealthEnabled = true;
 	}
 }
