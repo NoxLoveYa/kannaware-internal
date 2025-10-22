@@ -26,29 +26,16 @@ struct PlayerInfo {
     }
 };
 
-struct EntityData {
-    uint32_t index;
-    uintptr_t entityAddress;
-    char designerName[64];
-    bool isValid;
-
-    EntityData() : index(0), entityAddress(0), isValid(false) {
-        designerName[0] = '\0';
-    }
-};
-
 class EntityManager {
 private:
     std::array<PlayerInfo, 64> players;
-    std::unordered_map<std::string, std::vector<EntityData>> entityCache;
     uintptr_t clientBase;
     uintptr_t entityListAddr;
     int localPlayerIndex;
 
-    // Get entity from list using the C# logic
-public:
     uintptr_t localPlayerController;
     uintptr_t localPlayerPawn;
+public:
 
     uintptr_t GetEntityFromList(uint32_t index) {
         if (!entityListAddr) return 0;
@@ -76,6 +63,7 @@ public:
         char* designerName = reinterpret_cast<char*>(designerNamePtr);
         return designerName;
     }
+
     std::vector<uintptr_t> GetEntityFromDesignerName(const char* name) {
         std::vector<uintptr_t> entities;
         for (uint32_t i = 1; i <= 64; i++) {
@@ -124,7 +112,7 @@ public:
         UpdateLocalPlayer();
 
         // Update all player controllers (indices 1-64)
-        for (int i = 1; i <= 64; i++) {
+        for (int i = 1; i <= 1024; i++) {
             auto& player = players[i - 1];
             player.isValid = false;
 
@@ -168,51 +156,6 @@ public:
 
             player.isValid = true;
         }
-    }
-
-    void FetchEntities() {
-        entityCache.clear();
-
-        // Scan from 65 onwards
-        for (uint32_t i = 65; i <= 1024; i++) {
-            uintptr_t listEntry = *reinterpret_cast<uintptr_t*>((entityListAddr + (0x8 * ((i & 0x7FFF) >> 9)) + 0x10));
-            if (!listEntry)
-                continue;
-
-            uintptr_t entity = *reinterpret_cast<uintptr_t*>((listEntry + 0x70 * (i & 0x1FF)));
-            if (!entity)
-                continue;
-
-            uintptr_t entityIdentity = *reinterpret_cast<uintptr_t*>(entity + 0x10);
-            if (!entityIdentity)
-                continue;
-
-            uintptr_t designerNamePtr = *reinterpret_cast<uintptr_t*>(entityIdentity + 0x20);
-            if (!designerNamePtr)
-                continue;
-
-            char* designerName = reinterpret_cast<char*>(designerNamePtr);
-            std::string designerNameStr(designerName, strnlen(designerName, 32));
-
-            if (designerNameStr.empty())
-                continue;
-
-            EntityData data;
-            data.index = i;
-            data.entityAddress = entity;
-            strncpy_s(data.designerName, designerNameStr.c_str(), sizeof(data.designerName) - 1);
-            data.isValid = true;
-
-            entityCache[designerNameStr].push_back(data);
-        }
-    }
-
-    std::vector<EntityData> GetEntitiesByDesignerName(const char* name) {
-        auto it = entityCache.find(std::string(name));
-        if (it != entityCache.end()) {
-            return it->second;
-        }
-        return std::vector<EntityData>();
     }
 
     // Get all valid players

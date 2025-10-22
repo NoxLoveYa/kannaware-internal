@@ -207,6 +207,7 @@ void RenderESPDebugInfo()
 
 	char debugText[256];
 	sprintf_s(debugText,
+		"Version: Kannaware.cum 0.1\n"
 		"ESP: %s (HOME to toggle)\n"
 		"FrameStageNotify: %s\n"
 		"Calls: %d\n"
@@ -277,12 +278,12 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
+	// Render debug info
+	RenderESPDebugInfo();
+
 	// Render ESP overlay
 	g_ESP.UpdateViewMatrix(g_clientBase);
 	g_ESP.Render();
-
-	// Render debug info
-	RenderESPDebugInfo();
 
 	if (Menu::menu_opened) {
 		Menu::RenderMenu(g_unloading);
