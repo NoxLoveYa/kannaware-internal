@@ -34,5 +34,13 @@ namespace MenuOptions {
 
 		inline bool textNameEnabled = true;
 		inline bool textHealthEnabled = true;
+
+		// Circle esp options
+		inline bool circleEnabled = true;
+
+		inline float circleOpacity = 1.0f;
+		inline float circleRadius = 2.0f;
+
+		inline float circleColor[3] = { 1.0f, 1.0f, 1.0f };
 	}
 }

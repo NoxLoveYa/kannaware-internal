@@ -19,16 +19,16 @@ namespace Menu
 				ImGui::TextColored(ImVec4(0.3f, 0.8f, 1.0f, 1.0f), "esp");
 				ImGui::Separator();
 
+				ImGui::Checkbox("skip teammates", &MenuOptions::ESP::boxSkipTeammates);
+
+				ImGui::Spacing();
+
 				ImGui::Text("box settings:");
 				if (ImGui::Checkbox("boxes", &MenuOptions::ESP::boxEnabled) || MenuOptions::ESP::boxEnabled) {
 					ImGui::Spacing();
 
 					ImGui::Checkbox("boxes bakground", &MenuOptions::ESP::boxBgEnabled);
 
-					ImGui::Spacing();
-
-					ImGui::Checkbox("skip teammates", &MenuOptions::ESP::boxSkipTeammates);
-					
 					ImGui::Spacing();
 
 					ImGui::Text("box size settings:");
@@ -65,10 +65,6 @@ namespace Menu
 
 					ImGui::Spacing();
 
-					ImGui::Checkbox("skip teammates", &MenuOptions::ESP::healthBarSkipTeammates);
-
-					ImGui::Spacing();
-
 					ImGui::Text("box colors:");
 					ImGui::Checkbox("gradient color", &MenuOptions::ESP::healthBarGradientEnabled);
 
@@ -76,6 +72,31 @@ namespace Menu
 
 					ImGui::ColorEdit3("health bar color", MenuOptions::ESP::healthBarColor);
 					ImGui::ColorEdit3("health bar low color", MenuOptions::ESP::healthBarLowColor);
+				}
+
+				ImGui::Separator();
+
+				ImGui::Text("text settings:");
+				if (ImGui::Checkbox("Text ESP", &MenuOptions::ESP::nameEnabled) || MenuOptions::ESP::nameEnabled) {
+					ImGui::Checkbox("name", &MenuOptions::ESP::textNameEnabled);
+					ImGui::Checkbox("health", &MenuOptions::ESP::textHealthEnabled);
+					
+					ImGui::Spacing();
+
+					ImGui::SliderFloat("text background opacity", &MenuOptions::ESP::textBgOpacity, 0.0f, 1.0f);
+				}
+
+				ImGui::Text("head circle settings:");
+				if (ImGui::Checkbox("Head Circle ESP", &MenuOptions::ESP::circleEnabled) || MenuOptions::ESP::circleEnabled) {
+
+					ImGui::Spacing();
+
+					ImGui::SliderFloat("circle opacity", &MenuOptions::ESP::circleOpacity, 0.0f, 1.0f);
+					ImGui::SliderFloat("circle radius", &MenuOptions::ESP::circleRadius, 1.0f, 5.0f);
+
+					ImGui::Spacing();
+
+					ImGui::ColorEdit3("circle color", MenuOptions::ESP::circleColor);
 				}
 
 				ImGui::EndTabItem();

@@ -14,6 +14,7 @@ struct PlayerInfo {
     uintptr_t pawnAddress;
     uintptr_t pawn;
     Vector3 position;
+    std::unordered_map<std::string, Vector3> bonePositions;
     int health;
     int maxHealth;
     int teamNum;
@@ -22,10 +23,30 @@ struct PlayerInfo {
     bool isValid;
 
     PlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(0),
-        position(), health(0), maxHealth(0), teamNum(0),
+        position(), bonePositions(0), health(0), maxHealth(0), teamNum(0),
         isAlive(false), isValid(false) {
         name[0] = '\0';
     }
+};
+
+static std::unordered_map<std::string, int> Bones = {
+    { "head", 6 },
+    { "neck_0", 5 },
+    { "spine_1", 4 },
+    { "spine_2", 2 },
+    { "pelvis", 0 },
+    { "arm_upper_L", 8 },
+    { "arm_lower_L", 9 },
+    { "hand_L", 10 },
+    { "arm_upper_R", 13 },
+    { "arm_lower_R", 14 },
+    { "hand_R", 15 },
+    { "leg_upper_L", 22 },
+    { "leg_lower_L", 23 },
+    { "ankle_L", 24 },
+    { "leg_upper_R", 25 },
+    { "leg_lower_R", 26 },
+    { "ankle_R", 27 }
 };
 
 class EntityManager {
@@ -148,6 +169,13 @@ public:
 			uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(pawn + Offsets::Entity::m_pGameSceneNode);
 			if (!sceneNodePtr) continue;
 			Vector3 position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecAbsOrigin);
+			uintptr_t boneArrayPtr = *reinterpret_cast<uintptr_t*>(sceneNodePtr + 0x190 + 128);
+			if (!boneArrayPtr) continue;
+
+            for (const auto& [boneName, boneIndex] : Bones) {
+                Vector3 bonePos = *reinterpret_cast<Vector3*>(boneArrayPtr + (boneIndex * 32));
+				player.bonePositions.insert({ boneName, bonePos });
+			}
 
             if (sanitizedName) {
                 // Copy string safely (ensure null termination)
