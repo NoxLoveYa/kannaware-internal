@@ -287,14 +287,9 @@ kiero::Status::Enum kiero::init(RenderType::Enum _renderType)
 				D3D_FEATURE_LEVEL featureLevel;
 				const D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_11_0 };
 
-				DXGI_RATIONAL refreshRate;
-				refreshRate.Numerator = 240;
-				refreshRate.Denominator = 1;
-
 				DXGI_MODE_DESC bufferDesc;
 				bufferDesc.Width = 100;
 				bufferDesc.Height = 100;
-				bufferDesc.RefreshRate = refreshRate;
 				bufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 				bufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 				bufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;

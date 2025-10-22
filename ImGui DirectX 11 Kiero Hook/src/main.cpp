@@ -177,20 +177,19 @@ void __fastcall hkFrameStageNotify(void* thisptr, int stage)
 	g_frameStageNotifyCalled = true;
 	g_frameStageCounter++;
 
-
 	// Do custom logic AFTER the original function completes
 	switch (stage)
 	{
 	case FRAME_NET_UPDATE_POSTDATAUPDATE_START:
 		// Update entities after network data is received
 		if (g_clientBase) {
+			uintptr_t entityListAddr = g_clientBase + Offsets::Client::dwEntityList;
+			uintptr_t entityList = *reinterpret_cast<uintptr_t*>(entityListAddr);
 			g_EntityManager.UpdatePlayers();
 		}
 		break;
 	case FRAME_RENDER_START:
-		// Update view matrix before rendering
 		if (g_clientBase) {
-			g_ESP.UpdateViewMatrix(g_clientBase);
 		}
 		break;
 	case FRAME_RENDER_END:
@@ -279,6 +278,7 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	ImGui::NewFrame();
 
 	// Render ESP overlay
+	g_ESP.UpdateViewMatrix(g_clientBase);
 	g_ESP.Render();
 
 	// Render debug info

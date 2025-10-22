@@ -4,12 +4,13 @@
 #include <array>
 #include <unordered_map>
 #include <string>
+#include <vector>
 #include <Windows.h>
 
 struct PlayerInfo {
     uintptr_t controllerAddress;
     uintptr_t pawnAddress;
-    C_CSPlayerPawn* pawn;
+    uintptr_t pawn;
     Vector3 position;
     int health;
     int maxHealth;
@@ -18,7 +19,7 @@ struct PlayerInfo {
     bool isAlive;
     bool isValid;
 
-    PlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(nullptr),
+    PlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(0),
         position(), health(0), maxHealth(0), teamNum(0),
         isAlive(false), isValid(false) {
         name[0] = '\0';
@@ -42,104 +43,79 @@ private:
     std::unordered_map<std::string, std::vector<EntityData>> entityCache;
     uintptr_t clientBase;
     uintptr_t entityListAddr;
-    uintptr_t localPlayerController;
     int localPlayerIndex;
-    int entityHighestIndex;
-
-    // Read pointer safely
-    template<typename T>
-    T ReadMemory(uintptr_t address) {
-        if (!address) return T();
-        __try {
-            return *reinterpret_cast<T*>(address);
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            return T();
-        }
-    }
-
-    // Read string safely
-    void ReadString(uintptr_t address, char* buffer, size_t size) {
-        if (!address || !buffer || size == 0) return;
-        __try {
-            const char* str = reinterpret_cast<const char*>(address);
-            size_t i = 0;
-            while (i < size - 1 && str[i] != '\0') {
-                buffer[i] = str[i];
-                i++;
-            }
-            buffer[i] = '\0';
-        }
-        __except (EXCEPTION_EXECUTE_HANDLER) {
-            buffer[0] = '\0';
-        }
-    }
 
     // Get entity from list using the C# logic
+public:
+    uintptr_t localPlayerController;
+    uintptr_t localPlayerPawn;
+
     uintptr_t GetEntityFromList(uint32_t index) {
-        if (!entityListAddr || index == 0) return 0;
+        if (!entityListAddr) return 0;
 
-        // First level: (entityList + (0x8 * ((index & 0x7FFF) >> 9)) + 0x10)
-        uintptr_t listEntry = ReadMemory<uintptr_t>(
-            entityListAddr + (0x8 * ((index & 0x7FFF) >> 9)) + 0x10
-        );
-        if (!listEntry) return 0;
+        uintptr_t listEntry = *reinterpret_cast<uintptr_t*>((entityListAddr + (0x8 * ((index & 0x7FFF) >> 9)) + 0x10));
+        if (!listEntry)
+            return 0;
 
-        // Second level: listEntry + 0x70 * (index & 0x1FF)
-        uintptr_t entity = ReadMemory<uintptr_t>(
-            listEntry + 0x70 * (index & 0x1FF)
-        );
-
+        uintptr_t entity = *reinterpret_cast<uintptr_t*>((listEntry + 0x70 * (index & 0x1FF)));
         return entity;
     }
 
+    uintptr_t GetEntityIdentityFromEntity(uintptr_t entity) {
+        if (!entity) return NULL;
+        return *reinterpret_cast<uintptr_t*>(entity + 0x10);
+	}
+
     // Get designer name from entity
-    bool GetDesignerName(uintptr_t entity, char* buffer, size_t size) {
-        if (!entity || !buffer || size == 0) return false;
+    char* GetDesignerName(uintptr_t entityIdentity) {
+        if (!entityIdentity) return NULL;
 
-        // entity + 0x10 = CEntityIdentity*
-        uintptr_t entityIdentity = ReadMemory<uintptr_t>(entity + 0x10);
-        if (!entityIdentity) return false;
+        uintptr_t designerNamePtr = *reinterpret_cast<uintptr_t*>(entityIdentity + 0x20);
+        if (!designerNamePtr) return NULL;
 
-        // CEntityIdentity + 0x20 = m_designerName (CUtlSymbolLarge)
-        uintptr_t designerNamePtr = ReadMemory<uintptr_t>(entityIdentity + 0x20);
-        if (!designerNamePtr) return false;
-
-        ReadString(designerNamePtr, buffer, size);
-        return buffer[0] != '\0';
+        char* designerName = reinterpret_cast<char*>(designerNamePtr);
+        return designerName;
     }
+    std::vector<uintptr_t> GetEntityFromDesignerName(const char* name) {
+        std::vector<uintptr_t> entities;
+        for (uint32_t i = 1; i <= 64; i++) {
+            uintptr_t entity = GetEntityFromList(i);
+            if (!entity)
+                continue;
+            uintptr_t entityIdentity = GetEntityIdentityFromEntity(entity);
+            if (!entityIdentity)
+                continue;
+            char* designerName = GetDesignerName(entityIdentity);
+            if (!designerName)
+                continue;
+            if (strcmp(designerName, name) == 0) {
+                entities.push_back(entity);
+            }
+        }
+        return entities;
+	}
 
-    // Resolve CHandle to actual entity pointer (like C# GetPlayerByHandle)
+    // Resolve CHandle to actual entity pointer
     uintptr_t ResolveHandle(uint32_t handle) {
         if (handle == 0 || handle == 0xFFFFFFFF) return 0;
         return GetEntityFromList(handle);
     }
 
-public:
     EntityManager() : clientBase(0), entityListAddr(0),
-        localPlayerController(0), localPlayerIndex(-1), entityHighestIndex(1) {
+        localPlayerController(0), localPlayerPawn(0), localPlayerIndex(-1) {
     }
 
     void Initialize(uintptr_t clientDll) {
         clientBase = clientDll;
         if (!clientBase) return;
 
-        entityListAddr = clientBase + Offsets::Client::dwEntityList;
-        UpdateHighestEntityIndex();
-    }
-
-    void UpdateHighestEntityIndex() {
-        if (!clientBase) return;
-        entityHighestIndex = ReadMemory<int32_t>(
-            clientBase + Offsets::Client::dwGameEntitySystem_highestEntityIndex
-        );
+        entityListAddr = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwEntityList);
     }
 
     void UpdateLocalPlayer() {
         if (!clientBase) return;
-        localPlayerController = ReadMemory<uintptr_t>(
-            clientBase + Offsets::Client::dwLocalPlayerController
-        );
+        localPlayerController = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerController);
+		localPlayerPawn = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerPawn);
     }
 
     void UpdatePlayers() {
@@ -152,70 +128,82 @@ public:
             auto& player = players[i - 1];
             player.isValid = false;
 
-            uintptr_t controllerAddr = GetEntityFromList(i);
-            if (!controllerAddr || controllerAddr == localPlayerController) continue;
+            uintptr_t controller = GetEntityFromList(i);
+            if (!controller || controller == localPlayerController) continue;
 
-            CCSPlayerController* controller = reinterpret_cast<CCSPlayerController*>(controllerAddr);
-            if (!controller) continue;
-
-            // Get pawn handle and resolve it (like C# code does)
-            uint32_t pawnHandle = ReadMemory<uint32_t>(
-                controllerAddr + 0x8FC // m_hPlayerPawn offset
-            );
+            // Get pawn handle and resolve it
+            uint32_t pawnHandle = *reinterpret_cast<uint32_t*>(
+                controller + 0x8FC // m_hPlayerPawn offset
+                );
 
             if (pawnHandle == 0) continue;
 
-            uintptr_t pawnAddr = ResolveHandle(pawnHandle);
-            if (!pawnAddr) continue;
-
-            C_CSPlayerPawn* pawn = reinterpret_cast<C_CSPlayerPawn*>(pawnAddr);
+            uintptr_t pawn = ResolveHandle(pawnHandle);
             if (!pawn) continue;
 
+            bool isAlive = (*reinterpret_cast<bool*>(controller + 0x904));
             // Check if alive
-            if (!pawn->IsAlive() || pawn->m_iHealth <= 0) continue;
+            if (!isAlive) continue;
+
+			int health = *reinterpret_cast<int*>(pawn + 0x34C);
+			int maxHealth = *reinterpret_cast<int*>(pawn + 0x348);
+			int teamNum = *reinterpret_cast<uint8_t*>(pawn + 0x3EB);
+
+			uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(pawn + Offsets::Entity::m_pGameSceneNode);
+			if (!sceneNodePtr) continue;
+			Vector3 position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecAbsOrigin);
 
             // Cache player data
-            player.controllerAddress = controllerAddr;
-            player.pawnAddress = pawnAddr;
+            player.controllerAddress = controller;
             player.pawn = pawn;
-            player.health = pawn->m_iHealth;
-            player.maxHealth = pawn->m_iMaxHealth;
-            player.teamNum = pawn->m_iTeamNum;
-            player.position = pawn->GetOrigin();
-            player.isAlive = pawn->IsAlive();
+            player.health = health;
+            player.maxHealth = maxHealth;
+            player.teamNum = teamNum;
+            player.position = position;
+            player.isAlive = isAlive;
 
-            // Get sanitized name
-            const char* nameStr = controller->GetPlayerName();
-            if (nameStr) {
-                strncpy_s(player.name, nameStr, sizeof(player.name) - 1);
-                player.name[127] = '\0';
-            }
+            // Get sanitized 
+            strncpy_s(player.name, "test", sizeof(player.name) - 1);
+			player.name[127] = '\0';
 
             player.isValid = true;
         }
     }
 
     void FetchEntities() {
-        UpdateHighestEntityIndex();
         entityCache.clear();
 
-        int maxScan = min(entityHighestIndex, 1024);
+        // Scan from 65 onwards
+        for (uint32_t i = 65; i <= 1024; i++) {
+            uintptr_t listEntry = *reinterpret_cast<uintptr_t*>((entityListAddr + (0x8 * ((i & 0x7FFF) >> 9)) + 0x10));
+            if (!listEntry)
+                continue;
 
-        // Scan from 65 onwards (like C# code)
-        for (uint32_t i = 65; i <= maxScan; i++) {
-            uintptr_t entity = GetEntityFromList(i);
-            if (!entity) continue;
+            uintptr_t entity = *reinterpret_cast<uintptr_t*>((listEntry + 0x70 * (i & 0x1FF)));
+            if (!entity)
+                continue;
 
-            char designerName[64];
-            if (!GetDesignerName(entity, designerName, sizeof(designerName))) continue;
+            uintptr_t entityIdentity = *reinterpret_cast<uintptr_t*>(entity + 0x10);
+            if (!entityIdentity)
+                continue;
+
+            uintptr_t designerNamePtr = *reinterpret_cast<uintptr_t*>(entityIdentity + 0x20);
+            if (!designerNamePtr)
+                continue;
+
+            char* designerName = reinterpret_cast<char*>(designerNamePtr);
+            std::string designerNameStr(designerName, strnlen(designerName, 32));
+
+            if (designerNameStr.empty())
+                continue;
 
             EntityData data;
             data.index = i;
             data.entityAddress = entity;
-            strncpy_s(data.designerName, designerName, sizeof(data.designerName) - 1);
+            strncpy_s(data.designerName, designerNameStr.c_str(), sizeof(data.designerName) - 1);
             data.isValid = true;
 
-            entityCache[std::string(designerName)].push_back(data);
+            entityCache[designerNameStr].push_back(data);
         }
     }
 
@@ -243,6 +231,10 @@ public:
     }
 
     uintptr_t GetLocalPlayerController() const { return localPlayerController; }
+
+    uintptr_t GetLocalPlayerPawn() {
+        return localPlayerPawn;
+	}
 };
 
 // Global instance

@@ -147,11 +147,12 @@ public:
 
         // Get local player team for color coding
         int localTeam = -1;
-        uintptr_t localController = g_EntityManager.GetLocalPlayerController();
-        if (localController) {
-            C_BaseEntity* localEntity = reinterpret_cast<C_BaseEntity*>(localController);
-            localTeam = localEntity->m_iTeamNum;
+        uintptr_t localPawn = g_EntityManager.GetLocalPlayerPawn();
+        if (localPawn) {
+            localTeam = *reinterpret_cast<int*>(localPawn + 0x3EB);
         }
+        else
+            return;
 
         g_EntityManager.ForEachPlayer([&](const PlayerInfo& player) {
             if (!player.isValid || !player.isAlive) return;
