@@ -13,9 +13,6 @@ private:
     // Colors
     ImU32 enemyColor = IM_COL32(255, 0, 0, 255);
     ImU32 teamColor = IM_COL32(0, 255, 0, 255);
-    ImU32 healthBarGreen = IM_COL32(0, 255, 0, 255);
-    ImU32 healthBarYellow = IM_COL32(255, 255, 0, 255);
-    ImU32 healthBarRed = IM_COL32(255, 0, 0, 255);
     ImU32 textColor = IM_COL32(255, 255, 255, 255);
     ImU32 boxBg = IM_COL32(0, 0, 0, 255);
 
@@ -118,21 +115,35 @@ private:
         drawList->AddLine(ImVec2(right, bottom - verticalLength - halfThickness), ImVec2(right, bottom + halfThickness), boxColor, thickness);
     }
 
-    void DrawHealthBar(ImDrawList* drawList, const Vector2& head, const Vector2& feet, int health, int maxHealth) {
+    void DrawHealthBar(ImDrawList* drawList, const Vector2& head, const Vector2& feet, int health, int maxHealth, bool isEnemy) {
         float height = feet.y - head.y;
         float width = height * 0.65f;
         float left = head.x - width * 0.5f;
 
         float barWidth = 4.0f;
         float barHeight = height;
-        float barX = left - barWidth - 2.0f;
+        float barX = left - barWidth - 6.0f - MenuOptions::ESP::boxThickness / 2;
         float barY = head.y;
+        
+        ImU32 healthColor = IM_COL32(
+            (int)(MenuOptions::ESP::healthBarColor[0] * 255),
+            (int)(MenuOptions::ESP::healthBarColor[1] * 255),
+            (int)(MenuOptions::ESP::healthBarColor[2] * 255),
+            (int)(255)
+        );
 
-        // Background
-        drawList->AddRectFilled(
-            ImVec2(barX, barY),
-            ImVec2(barX + barWidth, barY + barHeight),
-            IM_COL32(0, 0, 0, 150)
+        ImU32 healthLowColor = IM_COL32(
+            (int)(MenuOptions::ESP::healthBarLowColor[0] * 255),
+            (int)(MenuOptions::ESP::healthBarLowColor[1] * 255),
+            (int)(MenuOptions::ESP::healthBarLowColor[2] * 255),
+            (int)(255)
+        );
+
+        ImU32 bgColor = IM_COL32(
+            (int)(MenuOptions::ESP::healthBarBgColor[0] * 255),
+            (int)(MenuOptions::ESP::healthBarBgColor[1] * 255),
+            (int)(MenuOptions::ESP::healthBarBgColor[2] * 255),
+            (int)(255)
         );
 
         // Health fill
@@ -140,22 +151,26 @@ private:
         healthPercent = MathUtils::Clamp(healthPercent, 0.0f, 1.0f);
         float fillHeight = barHeight * healthPercent;
 
-        ImU32 healthColor;
-        if (healthPercent > 0.6f) {
-            healthColor = healthBarGreen;
-        }
-        else if (healthPercent > 0.3f) {
-            healthColor = healthBarYellow;
-        }
-        else {
-            healthColor = healthBarRed;
-        }
+        // Background
+        drawList->AddRectFilled(
+            ImVec2(barX, barY),
+            ImVec2(barX + barWidth, barY + barHeight),
+            bgColor
+        );
 
+        //outlines
+        drawList->AddRectFilled(
+            ImVec2(barX - 1.f, barY + barHeight - fillHeight - 1.f),
+            ImVec2(barX + barWidth + 2.f, barY + barHeight + 1.f),
+            bgColor
+        );
+
+		// Health fill
         drawList->AddRectFilled(
             ImVec2(barX, barY + barHeight - fillHeight),
             ImVec2(barX + barWidth, barY + barHeight),
-            healthColor
-        );
+            healthPercent < 0.35f ? healthLowColor : healthColor
+		);
     }
 
     void DrawPlayerInfo(ImDrawList* drawList, const Vector2& head, const PlayerInfo& player) {
@@ -250,11 +265,14 @@ public:
             if (!MathUtils::WorldToScreen(feetPos, feetScreen, viewMatrix, screenWidth, screenHeight))
                 return;
 
+			bool isEnemy = (player.teamNum != localTeam);
+            
             if (MenuOptions::ESP::boxEnabled)
-                DrawBox(drawList, headScreen, feetScreen, (player.teamNum != localTeam));
+                DrawBox(drawList, headScreen, feetScreen, isEnemy);
 
             // Draw health bar
-            DrawHealthBar(drawList, headScreen, feetScreen, player.health, player.maxHealth);
+			if (MenuOptions::ESP::healthBarEnabled)
+                DrawHealthBar(drawList, headScreen, feetScreen, player.health, player.maxHealth, isEnemy);
 
             // Draw player info
             DrawPlayerInfo(drawList, headScreen, player);

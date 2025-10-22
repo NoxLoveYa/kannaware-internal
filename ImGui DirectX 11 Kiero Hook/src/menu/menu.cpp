@@ -53,8 +53,30 @@ namespace Menu
 					ImGui::ColorEdit3("enemy box color", MenuOptions::ESP::ennemyBoxColor);
 					ImGui::ColorEdit3("team box color", MenuOptions::ESP::teamBoxColor);
 
+					ImGui::Spacing();
+
+					ImGui::ColorEdit3("box background color", MenuOptions::ESP::boxBgColor);
 				}
 
+				ImGui::Separator();
+
+				ImGui::Text("health bar settings:");
+				if (ImGui::Checkbox("health bars", &MenuOptions::ESP::healthBarEnabled) || MenuOptions::ESP::healthBarEnabled) {
+
+					ImGui::Spacing();
+
+					ImGui::Checkbox("skip teammates", &MenuOptions::ESP::healthBarSkipTeammates);
+
+					ImGui::Spacing();
+
+					ImGui::Text("box colors:");
+					ImGui::Checkbox("gradient color", &MenuOptions::ESP::healthBarGradientEnabled);
+
+					ImGui::Spacing();
+
+					ImGui::ColorEdit3("health bar color", MenuOptions::ESP::healthBarColor);
+					ImGui::ColorEdit3("health bar low color", MenuOptions::ESP::healthBarLowColor);
+				}
 
 				ImGui::EndTabItem();
 			}
