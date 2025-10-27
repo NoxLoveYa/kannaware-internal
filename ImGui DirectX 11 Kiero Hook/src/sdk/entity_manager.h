@@ -29,6 +29,26 @@ struct PlayerInfo {
     }
 };
 
+struct LocalPlayerInfo {
+    uintptr_t controllerAddress;
+    uintptr_t pawnAddress;
+    uintptr_t pawn;
+    Vector3 position;
+	Vector3 ViewAngles;
+    int health;
+    int maxHealth;
+    int teamNum;
+    char name[128];
+    bool isAlive;
+    bool isValid;
+
+    LocalPlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(0),
+        position(), ViewAngles(), health(0), maxHealth(0), teamNum(0),
+        isAlive(false), isValid(false) {
+        name[0] = '\0';
+    }
+};
+
 static std::unordered_map<std::string, int> Bones = {
     { "head", 6 },
     { "neck_0", 5 },
@@ -54,11 +74,13 @@ private:
     std::array<PlayerInfo, 64> players;
     uintptr_t clientBase;
     uintptr_t entityListAddr;
-    int localPlayerIndex;
 
-    uintptr_t localPlayerController;
-    uintptr_t localPlayerPawn;
+	LocalPlayerInfo localPlayerInfo;
 public:
+
+    LocalPlayerInfo& GetLocalPlayerInfo() {
+        return localPlayerInfo;
+	}
 
     uintptr_t GetEntityFromList(uint32_t index) {
         if (!entityListAddr) return 0;
@@ -113,7 +135,7 @@ public:
     }
 
     EntityManager() : clientBase(0), entityListAddr(0),
-        localPlayerController(0), localPlayerPawn(0), localPlayerIndex(-1) {
+        localPlayerInfo() {
     }
 
     void Initialize(uintptr_t clientDll) {
@@ -124,9 +146,31 @@ public:
     }
 
     void UpdateLocalPlayer() {
+		localPlayerInfo.isValid = false;
         if (!clientBase) return;
-        localPlayerController = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerController);
-		localPlayerPawn = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerPawn);
+        localPlayerInfo.controllerAddress = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerController);
+        localPlayerInfo.pawnAddress = *reinterpret_cast<uintptr_t*>(clientBase + Offsets::Client::dwLocalPlayerPawn);
+		if (!localPlayerInfo.controllerAddress || !localPlayerInfo.pawnAddress) return;
+
+		localPlayerInfo.isAlive = (*reinterpret_cast<bool*>(localPlayerInfo.controllerAddress + Offsets::Controller::m_bPawnIsAlive));
+        uintptr_t sanitizedNamePtr = *reinterpret_cast<uintptr_t*>(localPlayerInfo.controllerAddress + Offsets::Controller::m_sSanitizedPlayerName);
+        if (!sanitizedNamePtr) return;
+
+        char* sanitizedName = reinterpret_cast<char*>(sanitizedNamePtr);
+        localPlayerInfo.health = *reinterpret_cast<int*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_iHealth);
+        localPlayerInfo.maxHealth = *reinterpret_cast<int*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_iMaxHealth);
+        localPlayerInfo.teamNum = *reinterpret_cast<uint8_t*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_iTeamNum);
+
+        if (sanitizedName) {
+            // Copy string safely (ensure null termination)
+            strncpy_s(localPlayerInfo.name, sizeof(localPlayerInfo.name), sanitizedName, _TRUNCATE);
+            localPlayerInfo.name[MAX_NAME_LEN - 1] = '\0';
+        }
+        else {
+            localPlayerInfo.name[0] = '\0';
+        }
+
+        localPlayerInfo.isValid = true;
     }
 
     void UpdatePlayers() {
@@ -142,7 +186,7 @@ public:
             player.isValid = false;
 
             uintptr_t controller = GetEntityFromList(i);
-            if (!controller || controller == localPlayerController) continue;
+            if (!controller || controller == localPlayerInfo.controllerAddress) continue;
 
             // Get pawn handle and resolve it
             uint32_t pawnHandle = *reinterpret_cast<uint32_t*>(
@@ -213,12 +257,6 @@ public:
         if (index < 0 || index >= 64) return nullptr;
         return players[index].isValid ? &players[index] : nullptr;
     }
-
-    uintptr_t GetLocalPlayerController() const { return localPlayerController; }
-
-    uintptr_t GetLocalPlayerPawn() {
-        return localPlayerPawn;
-	}
 };
 
 // Global instance

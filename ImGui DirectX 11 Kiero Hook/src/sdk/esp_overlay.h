@@ -288,13 +288,11 @@ public:
         ImDrawList* drawList = ImGui::GetBackgroundDrawList();
 
         // Get local player team for color coding
-        int localTeam = -1;
-        uintptr_t localPawn = g_EntityManager.GetLocalPlayerPawn();
-        if (localPawn) {
-            localTeam = *reinterpret_cast<int*>(localPawn + 0x3EB);
-        }
-        else
-            return;
+		LocalPlayerInfo& localPlayerInfo = g_EntityManager.GetLocalPlayerInfo();
+		int localTeam = localPlayerInfo.teamNum;
+
+        if (!localPlayerInfo.isValid || !localPlayerInfo.isAlive)
+			return;
 
         g_EntityManager.ForEachPlayer([&](const PlayerInfo& player) {
             if (!player.isValid || !player.isAlive) return;
