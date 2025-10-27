@@ -170,8 +170,8 @@ private:
 		);
     }
 
-    void DrawPlayerInfo(ImDrawList* drawList, const Vector2& head, const Vector2& feetScreen, const PlayerInfo& player) {
-        if (!MenuOptions::ESP::nameEnabled) return;
+    void DrawPlayerInfo(ImDrawList* drawList, const Vector2& head, const Vector2& feetScreen, const PlayerInfo& player, bool isEnemy) {
+        if (!isEnemy && MenuOptions::ESP::boxSkipTeammates) return;
         float height = head.y;
         float x = head.x;
 
@@ -321,8 +321,9 @@ public:
                 DrawHealthBar(drawList, headScreen, feetScreen, player.health, player.maxHealth, isEnemy);
 
             // Draw player info
-            DrawPlayerInfo(drawList, headScreen, feetScreen, player);
-            });
+            if (MenuOptions::ESP::nameEnabled)
+            DrawPlayerInfo(drawList, headScreen, feetScreen, player, isEnemy);
+        });
     }
 };
 
