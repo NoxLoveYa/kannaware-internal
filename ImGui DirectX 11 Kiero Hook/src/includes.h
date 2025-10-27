@@ -15,6 +15,7 @@
 #include "sdk/entity_manager.h"
 #include "sdk/esp_overlay.h"
 #include "sdk/vmt_hook.h"
+#include "sdk/aimbot_manager.h"
 
 typedef HRESULT(__stdcall* Present) (IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT Flags);
 typedef LRESULT(CALLBACK* WNDPROC)(HWND, UINT, WPARAM, LPARAM);

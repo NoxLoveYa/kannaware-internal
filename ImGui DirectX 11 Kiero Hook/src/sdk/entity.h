@@ -16,6 +16,20 @@ struct Vector3 {
     float Length() const {
         return sqrtf(x * x + y * y + z * z);
     }
+
+    float Normalize() {
+        float len = Length();
+        if (len != 0) {
+            x /= len;
+            y /= len;
+            z /= len;
+        }
+        return len;
+	}
+
+    float Dot(const Vector3& v) const {
+        return x * v.x + y * v.y + z * v.z;
+	}
 };
 
 struct Vector2 {

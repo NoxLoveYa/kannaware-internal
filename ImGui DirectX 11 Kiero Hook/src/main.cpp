@@ -284,6 +284,9 @@ HRESULT __stdcall hkPresent(IDXGISwapChain* pSwapChain, UINT SyncInterval, UINT 
 	g_ESP.UpdateViewMatrix(g_clientBase);
 	g_ESP.Render();
 
+	// Aimbot
+	g_AimbotManager.RunAimbot();
+
 	ImGuiIO& io = ImGui::GetIO();
 
 	if (Menu::menu_opened) {

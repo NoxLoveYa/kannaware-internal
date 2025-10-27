@@ -14,6 +14,7 @@ struct PlayerInfo {
     uintptr_t pawnAddress;
     uintptr_t pawn;
     Vector3 position;
+    Vector3 velocity;
     std::unordered_map<std::string, Vector3> bonePositions;
     int health;
     int maxHealth;
@@ -32,9 +33,10 @@ struct PlayerInfo {
 struct LocalPlayerInfo {
     uintptr_t controllerAddress;
     uintptr_t pawnAddress;
-    uintptr_t pawn;
     Vector3 position;
-	Vector3 ViewAngles;
+    Vector3 eyePosition;
+    Vector3 velocity;
+	Vector3* ViewAngles;
     int health;
     int maxHealth;
     int teamNum;
@@ -42,7 +44,7 @@ struct LocalPlayerInfo {
     bool isAlive;
     bool isValid;
 
-    LocalPlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(0),
+    LocalPlayerInfo() : controllerAddress(0), pawnAddress(0),
         position(), ViewAngles(), health(0), maxHealth(0), teamNum(0),
         isAlive(false), isValid(false) {
         name[0] = '\0';
@@ -161,6 +163,17 @@ public:
         localPlayerInfo.maxHealth = *reinterpret_cast<int*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_iMaxHealth);
         localPlayerInfo.teamNum = *reinterpret_cast<uint8_t*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_iTeamNum);
 
+        uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(localPlayerInfo.pawnAddress + Offsets::Entity::m_pGameSceneNode);
+        if (!sceneNodePtr) return;
+
+        localPlayerInfo.position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecOrigin);
+		localPlayerInfo.eyePosition = localPlayerInfo.position + *reinterpret_cast<Vector3*>(localPlayerInfo.pawnAddress + Offsets::C_BaseModelEntity::m_vecViewOffset);
+		localPlayerInfo.ViewAngles = reinterpret_cast<Vector3*>(clientBase + Offsets::Client::dwViewAngles);
+
+        localPlayerInfo.velocity = *reinterpret_cast<Vector3*>(
+            localPlayerInfo.pawnAddress + Offsets::Entity::m_vecVelocity
+        );
+
         if (sanitizedName) {
             // Copy string safely (ensure null termination)
             strncpy_s(localPlayerInfo.name, sizeof(localPlayerInfo.name), sanitizedName, _TRUNCATE);
@@ -209,6 +222,10 @@ public:
 			int health = *reinterpret_cast<int*>(pawn + Offsets::Entity::m_iHealth);
 			int maxHealth = *reinterpret_cast<int*>(pawn + Offsets::Entity::m_iMaxHealth);
 			int teamNum = *reinterpret_cast<uint8_t*>(pawn + Offsets::Entity::m_iTeamNum);
+
+            player.velocity = *reinterpret_cast<Vector3*>(
+                pawn + Offsets::Entity::m_vecVelocity
+            );
 
 			uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(pawn + Offsets::Entity::m_pGameSceneNode);
 			if (!sceneNodePtr) continue;
