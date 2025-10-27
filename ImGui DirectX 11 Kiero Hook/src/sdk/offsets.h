@@ -5,11 +5,11 @@
 namespace Offsets {
     // Module offsets - client.dll
     namespace Client {
-        constexpr std::ptrdiff_t dwEntityList = 0x1D00690;
-        constexpr std::ptrdiff_t dwLocalPlayerController = 0x1E0A348;
-        constexpr std::ptrdiff_t dwLocalPlayerPawn = 0x1BDBB10;
-        constexpr std::ptrdiff_t dwViewMatrix = 0x1E1E920;
-        constexpr std::ptrdiff_t dwGameEntitySystem = 0x1FA4FE0;
+        constexpr std::ptrdiff_t dwEntityList = 0x1D07A80;
+        constexpr std::ptrdiff_t dwLocalPlayerController = 0x1E11978;
+        constexpr std::ptrdiff_t dwLocalPlayerPawn = 0x1BE2D10;
+        constexpr std::ptrdiff_t dwViewMatrix = 0x1E25F30;
+        constexpr std::ptrdiff_t dwGameEntitySystem = 0x1FAC650;
 		constexpr std::ptrdiff_t dwGameEntitySystem_highestEntityIndex = 0x20F0;
     }
 
@@ -34,6 +34,8 @@ namespace Offsets {
         constexpr std::ptrdiff_t m_vecAbsOrigin = 0xD0;
         constexpr std::ptrdiff_t m_angRotation = 0xC0;
         constexpr std::ptrdiff_t m_bDormant = 0x10B;
+		constexpr std::ptrdiff_t m_modelState = 0x190;
+		constexpr std::ptrdiff_t m_boneArray = 0x80;
     }
 
     // C_BasePlayerPawn

@@ -23,7 +23,7 @@ struct PlayerInfo {
     bool isValid;
 
     PlayerInfo() : controllerAddress(0), pawnAddress(0), pawn(0),
-        position(), bonePositions(0), health(0), maxHealth(0), teamNum(0),
+        position(), bonePositions(), health(0), maxHealth(0), teamNum(0),
         isAlive(false), isValid(false) {
         name[0] = '\0';
     }
@@ -146,7 +146,7 @@ public:
 
             // Get pawn handle and resolve it
             uint32_t pawnHandle = *reinterpret_cast<uint32_t*>(
-                controller + 0x8FC // m_hPlayerPawn offset
+                controller + Offsets::Controller::m_hPlayerPawn // m_hPlayerPawn offset
                 );
 
             if (pawnHandle == 0) continue;
@@ -154,28 +154,29 @@ public:
             uintptr_t pawn = ResolveHandle(pawnHandle);
             if (!pawn) continue;
 
-            bool isAlive = (*reinterpret_cast<bool*>(controller + 0x904));
+            bool isAlive = (*reinterpret_cast<bool*>(controller + Offsets::Controller::m_bPawnIsAlive));
             // Check if alive
             if (!isAlive) continue;
 
-			uintptr_t sanitizedNamePtr = *reinterpret_cast<uintptr_t*>(controller + 0x850);
+			uintptr_t sanitizedNamePtr = *reinterpret_cast<uintptr_t*>(controller + Offsets::Controller::m_sSanitizedPlayerName);
 			if (!sanitizedNamePtr) continue;
 
 			char* sanitizedName = reinterpret_cast<char*>(sanitizedNamePtr);
-			int health = *reinterpret_cast<int*>(pawn + 0x34C);
-			int maxHealth = *reinterpret_cast<int*>(pawn + 0x348);
-			int teamNum = *reinterpret_cast<uint8_t*>(pawn + 0x3EB);
+			int health = *reinterpret_cast<int*>(pawn + Offsets::Entity::m_iHealth);
+			int maxHealth = *reinterpret_cast<int*>(pawn + Offsets::Entity::m_iMaxHealth);
+			int teamNum = *reinterpret_cast<uint8_t*>(pawn + Offsets::Entity::m_iTeamNum);
 
 			uintptr_t sceneNodePtr = *reinterpret_cast<uintptr_t*>(pawn + Offsets::Entity::m_pGameSceneNode);
 			if (!sceneNodePtr) continue;
-			Vector3 position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecAbsOrigin);
-			uintptr_t boneArrayPtr = *reinterpret_cast<uintptr_t*>(sceneNodePtr + 0x190 + 128);
+			uintptr_t boneArrayPtr = *reinterpret_cast<uintptr_t*>(sceneNodePtr + Offsets::SceneNode::m_modelState + 128);
 			if (!boneArrayPtr) continue;
 
             for (const auto& [boneName, boneIndex] : Bones) {
                 Vector3 bonePos = *reinterpret_cast<Vector3*>(boneArrayPtr + (boneIndex * 32));
-				player.bonePositions.insert({ boneName, bonePos });
+				player.bonePositions[boneName] = bonePos;
 			}
+
+            Vector3 position = *reinterpret_cast<Vector3*>(sceneNodePtr + Offsets::SceneNode::m_vecAbsOrigin);
 
             if (sanitizedName) {
                 // Copy string safely (ensure null termination)
